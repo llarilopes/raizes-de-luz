@@ -1,0 +1,1103 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import * as Tone from "tone";
+import { Moon, Sparkles, Shuffle, BookOpen, RotateCcw, ChevronRight, Flame, Coins, Volume2, VolumeX, Share2, X, Lock, Music, Ear, EarOff, Compass } from "lucide-react";
+
+/* ---------------------------------------------------------
+   DADOS DO BARALHO — técnica tradicional (78 cartas)
+--------------------------------------------------------- */
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const MAJOR_DATA = [
+  ["0", "O Louco", "início, espontaneidade, fé", "imprudência, risco cego", "Início de algo novo, espontaneidade e fé no desconhecido.", "Imprudência e risco mal calculado; um passo em falso.", "É hora de dar o primeiro passo, mesmo sem saber tudo. Confie e comece.", "Cuidado: você pode estar se arriscando sem pensar nas consequências."],
+  ["I", "O Mago", "poder, ação, recursos", "manipulação, potencial perdido", "Poder pessoal, ação decidida e recursos disponíveis para criar.", "Manipulação, ou um talento ainda não utilizado.", "Você tem tudo que precisa agora. É hora de agir, não só planejar.", "Alguém pode estar te enganando — ou você está desperdiçando seu próprio talento."],
+  ["II", "A Sacerdotisa", "intuição, mistério", "segredos, desconexão", "Intuição, mistério e uma sabedoria que vem de dentro.", "Segredos guardados ou desconexão da própria intuição.", "Ouça sua intuição antes de pedir opinião a todo mundo.", "Você está ignorando o que seu instinto já sabe, ou algo está sendo escondido de você."],
+  ["III", "A Imperatriz", "fertilidade, abundância", "bloqueio, dependência", "Fertilidade, abundância e a força criadora em movimento.", "Bloqueio criativo ou dependência excessiva de alguém.", "Um momento fértil para criar, cuidar e crescer algo com carinho.", "Você pode estar travado criativamente, ou dependendo demais de outra pessoa."],
+  ["IV", "O Imperador", "estrutura, autoridade", "rigidez, controle excessivo", "Estrutura, autoridade e controle sobre a própria vida.", "Rigidez, autoritarismo ou medo de perder o controle.", "Coloque ordem na sua vida — regras claras vão te dar segurança agora.", "Você está tentando controlar demais, ou sendo controlado por alguém rígido."],
+  ["V", "O Papa", "tradição, ensino", "dogma, ruptura", "Tradição, ensino e pertencimento a algo maior.", "Dogmatismo ou necessidade de romper com convenções.", "Buscar orientação ou seguir uma tradição pode te ajudar agora.", "As regras de sempre não servem mais — talvez seja hora de romper com elas."],
+  ["VI", "Os Enamorados", "união, escolha", "desalinhamento, escolha errada", "União, escolha e valores compartilhados com o outro.", "Desalinhamento de valores ou uma escolha equivocada.", "Uma decisão importante envolvendo outra pessoa está no ar — escolha com o coração e a razão juntos.", "Vocês (ou você) estão remando em direções diferentes — reveja essa escolha."],
+  ["VII", "O Carro", "vontade, vitória", "sem direção, forças opostas", "Vontade firme, vitória e direção clara diante de obstáculos.", "Falta de direção, forças conflitantes puxando lados opostos.", "Você tem foco e força de vontade para vencer esse desafio.", "Você está sendo puxado em direções opostas e perdendo o rumo."],
+  ["VIII", "A Força", "coragem serena", "insegurança, força mal usada", "Coragem serena e domínio de si mesmo diante da adversidade.", "Insegurança ou força usada de forma destrutiva.", "Você é mais forte do que pensa — enfrente isso com calma, não com bravura forçada.", "Insegurança está te fazendo agir de forma dura ou impulsiva demais."],
+  ["IX", "O Eremita", "introspecção, busca", "isolamento, fuga", "Introspecção, busca interior e uma sabedoria que exige solidão.", "Isolamento excessivo ou fuga do que precisa ser enfrentado.", "Um tempo sozinho vai te ajudar a entender melhor a situação.", "Você pode estar se isolando demais, fugindo de algo que precisa ser encarado."],
+  ["X", "A Roda da Fortuna", "ciclos, destino", "resistência, má sorte", "Ciclos, destino e uma mudança inevitável em curso.", "Resistência à mudança ou sensação de má sorte constante.", "A vida está girando — algo vai mudar, esteja aberto a isso.", "Você está resistindo a uma mudança que, no fundo, já é inevitável."],
+  ["XI", "A Justiça", "verdade, equilíbrio", "injustiça, desonestidade", "Verdade, causa e efeito, e um equilíbrio que se impõe.", "Injustiça, desonestidade ou uma decisão parcial.", "As consequências das suas ações estão chegando — e isso é justo.", "Algo injusto ou desonesto está acontecendo, e precisa ser corrigido."],
+  ["XII", "O Pendurado", "pausa, nova visão", "estagnação, resistência", "Pausa, entrega e um novo ponto de vista sobre a situação.", "Estagnação ou resistência a um sacrifício necessário.", "Pare antes de agir. Olhar a situação de outro ângulo vai mudar tudo.", "Você está travado porque resiste a soltar algo que já não serve."],
+  ["XIII", "A Morte", "fim de ciclo, renascimento", "apego, resistência", "Fim de um ciclo e a transformação que abre espaço para o novo.", "Apego ao passado ou resistência a uma mudança necessária.", "Algo está terminando de verdade — e isso abre espaço para o novo.", "Você está se apegando a algo que já morreu, e isso está te travando."],
+  ["XIV", "A Temperança", "equilíbrio, moderação", "excesso, desequilíbrio", "Equilíbrio, moderação e a integração de partes opostas.", "Excesso, impaciência ou desequilíbrio entre extremos.", "Vá com calma, misture os extremos — o meio-termo é o caminho certo agora.", "Você está exagerando em algo, ou perdendo a paciência rápido demais."],
+  ["XV", "O Diabo", "apego, tentação", "libertação, ruptura", "Apego, tentação e padrões que prendem mais do que parecem.", "Libertação e ruptura de correntes que já não servem.", "Um hábito ou desejo está te prendendo mais do que você percebe.", "Você está se libertando de um padrão ou vício que te prendia."],
+  ["XVI", "A Torre", "colapso, revelação", "crise evitada, medo", "Colapso súbito que revela o que estava mal construído.", "Uma crise evitada por pouco, ou medo paralisante da mudança.", "Uma mudança brusca vai derrubar algo que já não tinha base sólida — e está tudo bem.", "Você escapou de uma crise por pouco, ou está paralisado de medo do que pode desmoronar."],
+  ["XVII", "A Estrela", "esperança, cura", "desânimo, fé perdida", "Esperança, cura e inspiração depois da tempestade.", "Desânimo, ou uma fé que parece ter se esgotado.", "Depois da tempestade vem a calma — tenha esperança, a cura está em curso.", "Você está desanimado e sentindo que perdeu a fé — isso é passageiro."],
+  ["XVIII", "A Lua", "ilusão, subconsciente", "clareza emergente", "Ilusão, subconsciente e verdades que ainda não são claras.", "Clareza que começa a emergir depois de medos superados.", "As coisas não estão totalmente claras ainda — confie no processo, não force respostas.", "A confusão está começando a se dissipar; a clareza já vem chegando."],
+  ["XIX", "O Sol", "vitalidade, clareza", "otimismo cego", "Vitalidade, clareza e um sucesso visível e merecido.", "Otimismo exagerado que ofusca detalhes importantes.", "Momento de vitalidade e sucesso — aproveite essa energia boa.", "Seu otimismo pode estar te fazendo ignorar detalhes importantes."],
+  ["XX", "O Julgamento", "despertar, chamado", "autocrítica, dúvida", "Despertar, um chamado interior e ajuste de contas com o passado.", "Autocrítica excessiva ou dúvida sobre o próprio valor.", "Um chamado interior está pedindo uma virada — ouça-o.", "Você está sendo duro demais consigo mesmo, duvidando do seu próprio valor."],
+  ["XXI", "O Mundo", "conclusão, totalidade", "ciclo incompleto", "Conclusão, realização e um ciclo que se fecha por completo.", "Um ciclo incompleto, algo que ainda pede um passo final.", "Você está completando um grande ciclo — celebre essa conquista.", "Falta um passo final para esse ciclo se fechar de verdade."],
+];
+
+const MAJOR_ACTIONS = {
+  "O Louco": ["Dê o primeiro passo essa semana, mesmo pequeno — não espere ter 100% de certeza.", "Pare e avalie os riscos reais antes de agir; peça uma segunda opinião se puder."],
+  "O Mago": ["Use os recursos que você já tem agora — pare de esperar o momento perfeito e comece.", "Verifique se alguém está te enganando, ou pare de subestimar o que você já sabe fazer."],
+  "A Sacerdotisa": ["Reserve um tempo em silêncio antes de decidir — a resposta já está dentro de você.", "Não decida agora por impulso; busque mais informação antes de confiar na primeira impressão."],
+  "A Imperatriz": ["Invista tempo e cuidado em algo (ou alguém) que você quer ver crescer.", "Estabeleça um limite claro para não depender tanto de uma pessoa ou situação."],
+  "O Imperador": ["Crie uma rotina ou regra clara para essa situação — estrutura vai te dar segurança.", "Solte um pouco o controle, ou questione uma regra que já não faz sentido."],
+  "O Papa": ["Busque orientação de alguém experiente ou de uma tradição em que você confia.", "Questione uma regra ou convenção que já não serve mais para você."],
+  "Os Enamorados": ["Converse abertamente sobre essa escolha antes de decidir sozinho(a).", "Reveja se os valores envolvidos nessa escolha realmente estão alinhados."],
+  "O Carro": ["Foque em uma direção só e avance com decisão — divida o objetivo em passos práticos.", "Pare e defina uma direção clara antes de continuar, ou você vai gastar energia à toa."],
+  "A Força": ["Enfrente isso com calma; respire antes de reagir.", "Não tome nenhuma atitude agora se estiver se sentindo insegura(o) ou impulsivo(a)."],
+  "O Eremita": ["Separe um tempo sozinho(a) essa semana antes de decidir qualquer coisa.", "Marque um encontro ou conversa — você está se isolando mais do que deveria."],
+  "A Roda da Fortuna": ["Aceite que algo vai mudar e prepare um plano B, em vez de resistir.", "Pare de lutar contra o que já está em movimento; ajuste-se à mudança."],
+  "A Justiça": ["Seja justo(a) e honesto(a) nessa situação, mesmo que custe algo no curto prazo.", "Corrija algo que você sabe que está injusto ou desonesto, antes que piore."],
+  "O Pendurado": ["Espere antes de agir; observe a situação de um ângulo diferente por alguns dias.", "Solte algo que você está segurando por medo — isso está te travando."],
+  "A Morte": ["Encerre formalmente algo que já terminou, para abrir espaço para o novo.", "Identifique o que você está evitando encerrar, e dê o primeiro passo para isso."],
+  "A Temperança": ["Busque o meio-termo: não vá para o extremo em nenhuma direção agora.", "Reduza o ritmo — você está exagerando ou perdendo a paciência rápido demais."],
+  "O Diabo": ["Nomeie o hábito ou padrão que está te prendendo, e dê um passo pequeno para se libertar dele.", "Continue esse processo de libertação — você já está no caminho certo."],
+  "A Torre": ["Prepare-se para uma mudança brusca; não tente evitar o inevitável, proteja o essencial.", "Enfrente o medo da mudança antes que ele te paralise mais."],
+  "A Estrela": ["Confie no processo de cura e mantenha a esperança — dê o próximo passo pequeno.", "Busque apoio (de alguém ou de uma prática) para recuperar sua fé nesse momento."],
+  "A Lua": ["Não force uma resposta agora; dê tempo para as coisas ficarem claras.", "Confie na clareza que já está chegando, e comece a agir com mais segurança."],
+  "O Sol": ["Aproveite esse momento de força — é um bom período para agir e se mostrar.", "Confira os detalhes antes de seguir; o otimismo pode estar escondendo algo."],
+  "O Julgamento": ["Ouça o chamado interior e tome a decisão que você está adiando.", "Seja mais gentil consigo mesma(o) antes de julgar sua própria decisão."],
+  "O Mundo": ["Celebre essa conquista e feche esse ciclo por completo antes de começar outro.", "Identifique o passo final que falta, e dê esse passo antes de seguir adiante."],
+};
+
+const MAJOR_CARDS = MAJOR_DATA.map(([num, name, kwUp, kwRev, up, rev, simpleUp, simpleRev]) => ({
+  title: name, symbol: num, kwUp, kwRev, meaningUp: up, meaningRev: rev, simpleUp, simpleRev,
+  actionUp: MAJOR_ACTIONS[name][0], actionRev: MAJOR_ACTIONS[name][1], arcana: "maior",
+}));
+
+const RANKS = [
+  { label: "Ás", up: "início puro e potencial", rev: "oportunidade perdida ou atrasada", simpleUp: "Algo novo está começando em {area}.", simpleRev: "Uma oportunidade em {area} pode estar atrasando ou passando despercebida.", actionUp: "Dê o primeiro passo em {area} essa semana.", actionRev: "Não deixe essa oportunidade em {area} passar — tome a iniciativa agora." },
+  { label: "Dois", up: "equilíbrio e escolha", rev: "indecisão e desequilíbrio", simpleUp: "Você está diante de uma escolha ou precisa equilibrar algo em {area}.", simpleRev: "Você está indeciso ou desequilibrado em {area}.", actionUp: "Tome uma decisão em {area} em vez de ficar em cima do muro.", actionRev: "Busque mais equilíbrio antes de decidir sobre {area}." },
+  { label: "Três", up: "crescimento e expansão", rev: "crescimento estagnado", simpleUp: "As coisas estão crescendo bem em {area}.", simpleRev: "O crescimento em {area} está travado.", actionUp: "Continue investindo em {area} — está funcionando.", actionRev: "Identifique o que está travando o crescimento em {area}, e mude uma coisa pequena." },
+  { label: "Quatro", up: "estabilidade e estrutura", rev: "rigidez ou instabilidade oculta", simpleUp: "Você tem uma base estável em {area}, mas cuidado para não travar.", simpleRev: "Algo em {area} está rígido demais, ou instável por dentro.", actionUp: "Mantenha a base que você construiu em {area}, mas fique de olho para não travar.", actionRev: "Solte um pouco o controle sobre {area}, ou busque mais firmeza se estiver instável." },
+  { label: "Cinco", up: "conflito e desafio", rev: "conflito evitado ou mal resolvido", simpleUp: "Há um conflito ou desafio real em {area} agora.", simpleRev: "Um conflito em {area} foi evitado, mas mal resolvido.", actionUp: "Encare o conflito em {area} diretamente, em vez de evitá-lo.", actionRev: "Resolva de verdade o que ainda ficou pendente em {area}." },
+  { label: "Seis", up: "harmonia e cooperação", rev: "desequilíbrio nas trocas", simpleUp: "Há harmonia e boas trocas em {area}.", simpleRev: "As trocas em {area} estão desequilibradas — alguém dá mais do que recebe.", actionUp: "Aproveite essa fase boa em {area} para fortalecer os laços.", actionRev: "Reequilibre o que está sendo dado e recebido em {area}." },
+  { label: "Sete", up: "reflexão e paciência", rev: "estagnação por dúvida", simpleUp: "É hora de pensar com calma antes de agir em {area}.", simpleRev: "Você está travado pela dúvida em {area}.", actionUp: "Pense com calma antes de agir em {area} — não decida com pressa.", actionRev: "Pare de girar em dúvida sobre {area}; escolha um caminho e siga." },
+  { label: "Oito", up: "movimento e ação rápida", rev: "ação precipitada ou parada", simpleUp: "As coisas estão se movendo rápido em {area}.", simpleRev: "Você agiu rápido demais, ou está paralisado, em {area}.", actionUp: "Aproveite o ritmo rápido em {area}, mas confira os detalhes antes de seguir.", actionRev: "Retome o controle em {area} — ou você agiu rápido demais, ou parou de agir." },
+  { label: "Nove", up: "quase lá, resiliência", rev: "ansiedade e exaustão", simpleUp: "Você está quase lá em {area}, mesmo cansado.", simpleRev: "A ansiedade está pesando em {area}.", actionUp: "Continue mais um pouco em {area} — você está quase lá.", actionRev: "Descanse antes de continuar em {area}; a ansiedade não vai ajudar agora." },
+  { label: "Dez", up: "conclusão de um ciclo", rev: "ciclo prolongado além do necessário", simpleUp: "Um ciclo em {area} está se completando.", simpleRev: "Esse ciclo em {area} está demorando mais do que devia.", actionUp: "Celebre e encerre esse ciclo em {area} antes de começar outro.", actionRev: "Identifique o que está prolongando esse ciclo em {area}, e dê um passo para fechá-lo." },
+  { label: "Pajem", up: "curiosidade e aprendizado", rev: "imaturidade ou notícia atrasada", simpleUp: "Uma novidade ou aprendizado chega em {area}.", simpleRev: "Uma notícia sobre {area} pode estar atrasada, ou falta maturidade nisso.", actionUp: "Fique aberto(a) a aprender algo novo em {area}.", actionRev: "Confirme a informação antes de agir em {area} — pode estar incompleta." },
+  { label: "Cavaleiro", up: "ação e busca ativa", rev: "impulsividade ou ação parada", simpleUp: "É hora de agir com decisão em {area}.", simpleRev: "Cuidado com impulsividade — ou travamento — em {area}.", actionUp: "Tome a iniciativa em {area} agora, com decisão.", actionRev: "Freie a impulsividade em {area}, ou retome a ação se estiver parado(a)." },
+  { label: "Rainha", up: "domínio intuitivo do elemento", rev: "domínio emocional desequilibrado", simpleUp: "Use sua intuição para cuidar de {area}.", simpleRev: "Suas emoções estão desequilibrando {area}.", actionUp: "Confie na sua intuição para cuidar de {area}.", actionRev: "Cuide primeiro do seu próprio equilíbrio emocional antes de lidar com {area}." },
+  { label: "Rei", up: "domínio maduro e autoridade", rev: "autoridade rígida ou abuso de poder", simpleUp: "Você tem controle maduro sobre {area}.", simpleRev: "Há rigidez ou abuso de poder envolvendo {area}.", actionUp: "Assuma a liderança madura sobre {area}.", actionRev: "Revise se você (ou alguém) está sendo rígido ou controlador demais em {area}." },
+];
+
+const SUITS = [
+  { name: "Copas", key: "copas", domain: "emoções e relações", area: "seus sentimentos e relações" },
+  { name: "Espadas", key: "espadas", domain: "pensamento e conflito", area: "suas decisões e conflitos" },
+  { name: "Ouros", key: "ouros", domain: "trabalho e recursos", area: "seu trabalho e finanças" },
+  { name: "Bastões", key: "bastoes", domain: "paixão e ação", area: "sua energia e motivação" },
+];
+
+const MINOR_CARDS = SUITS.flatMap((suit) =>
+  RANKS.map((rank) => ({
+    title: `${rank.label} de ${suit.name}`,
+    suitKey: suit.key,
+    rankLabel: rank.label,
+    kwUp: rank.up,
+    kwRev: rank.rev,
+    meaningUp: `${cap(rank.up)}, vivido no campo de ${suit.domain}.`,
+    meaningRev: `${cap(rank.rev)}, refletido em ${suit.domain}.`,
+    simpleUp: rank.simpleUp.replace("{area}", suit.area),
+    simpleRev: rank.simpleRev.replace("{area}", suit.area),
+    actionUp: rank.actionUp.replace("{area}", suit.area),
+    actionRev: rank.actionRev.replace("{area}", suit.area),
+    arcana: "menor",
+  }))
+);
+
+const DECK = [...MAJOR_CARDS, ...MINOR_CARDS].map((c, i) => ({ ...c, id: i }));
+
+const SPREADS = {
+  dia: { label: "Carta do Dia", count: 1, positions: ["Mensagem do dia"], free: true, when: "Use quando quiser uma mensagem rápida para guiar o seu dia, ou tiver uma pergunta simples e direta.", forWho: "Para começar, ou para o dia a dia." },
+  ppf: { label: "Passado · Presente · Futuro", count: 3, positions: ["Passado", "Presente", "Futuro"], free: false, when: "Use para entender como uma situação chegou até aqui e para onde ela está indo. Ótima para decisões em andamento.", forWho: "Quando algo já está em movimento e você quer entender o rumo." },
+  cruz5: { label: "Cruz Simplificada", count: 5, positions: ["Situação", "Desafio", "Conselho", "Causa oculta", "Resultado"], free: false, when: "Use quando já sabe qual é o problema e quer um conselho prático, além de um resultado provável.", forWho: "Quando você já sabe o problema e quer um plano de ação." },
+  duo: { label: "Você & a Outra Pessoa", count: 3, positions: ["Você", "{nome}", "Caminho sugerido"], free: false, when: "Use quando sua pergunta envolve diretamente outra pessoa — um crush, ex, parceiro(a) — e você quer entender os dois lados antes de agir.", forWho: "Quando a pergunta é sobre você E uma pessoa específica." },
+  celta: {
+    label: "Cruz Celta",
+    count: 10,
+    positions: ["Situação", "Desafio", "Base", "Passado recente", "Objetivo", "Futuro próximo", "Você mesmo", "Influências", "Esperança/Medo", "Resultado final"],
+    free: false,
+    when: "Use para uma pergunta grande e complexa, quando você quer entender todos os ângulos de uma situação importante da sua vida.",
+    forWho: "Para os temas mais importantes — a leitura mais completa.",
+  },
+};
+
+function resolvePositions(spread, otherName) {
+  const name = (otherName || "").trim() || "a outra pessoa";
+  return spread.positions.map((p) => p.replace("{nome}", name));
+}
+
+function shuffleDeck() {
+  const d = [...DECK];
+  for (let i = d.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [d[i], d[j]] = [d[j], d[i]];
+  }
+  return d;
+}
+function drawCards(n) {
+  return shuffleDeck().slice(0, n).map((c) => ({ ...c, reversed: Math.random() < 0.42 }));
+}
+
+/* ---------------------------------------------------------
+   ÍCONES SVG ORIGINAIS (line-art) — 22 Maiores + 4 naipes
+--------------------------------------------------------- */
+function MajorIcon({ title }) {
+  const shapes = {
+    "O Louco": <><circle cx="50" cy="26" r="9" /><line x1="50" y1="35" x2="50" y2="58" /><line x1="50" y1="44" x2="34" y2="38" /><line x1="50" y1="44" x2="66" y2="38" /><line x1="50" y1="58" x2="38" y2="82" /><line x1="50" y1="58" x2="62" y2="82" /></>,
+    "O Mago": <><circle cx="38" cy="45" r="11" /><circle cx="62" cy="45" r="11" /><line x1="50" y1="56" x2="50" y2="82" /></>,
+    "A Sacerdotisa": <><line x1="24" y1="15" x2="24" y2="85" /><line x1="76" y1="15" x2="76" y2="85" /><circle cx="47" cy="46" r="13" /><circle cx="55" cy="46" r="13" fill="var(--ink2)" /></>,
+    "A Imperatriz": <><circle cx="50" cy="34" r="13" /><line x1="50" y1="47" x2="50" y2="74" /><line x1="37" y1="58" x2="63" y2="58" /></>,
+    "O Imperador": <><rect x="30" y="38" width="40" height="38" /><circle cx="35" cy="24" r="6" /><circle cx="65" cy="24" r="6" /></>,
+    "O Papa": <><circle cx="30" cy="30" r="7" /><line x1="30" y1="30" x2="72" y2="72" /><circle cx="70" cy="30" r="7" /><line x1="70" y1="30" x2="28" y2="72" /></>,
+    "Os Enamorados": <><circle cx="39" cy="56" r="17" /><circle cx="61" cy="56" r="17" /><circle cx="50" cy="24" r="7" /></>,
+    "O Carro": <><circle cx="50" cy="55" r="21" /><line x1="50" y1="34" x2="50" y2="76" /><line x1="29" y1="55" x2="71" y2="55" /><line x1="35" y1="40" x2="65" y2="70" /><line x1="65" y1="40" x2="35" y2="70" /></>,
+    "A Força": <><circle cx="38" cy="34" r="9" /><circle cx="62" cy="34" r="9" /><polyline points="25,65 40,53 55,65 70,53" /></>,
+    "O Eremita": <><polygon points="50,18 38,44 62,44" /><rect x="41" y="44" width="18" height="20" /><line x1="50" y1="64" x2="50" y2="85" /></>,
+    "A Roda da Fortuna": <><circle cx="50" cy="50" r="24" /><line x1="50" y1="26" x2="50" y2="74" /><line x1="26" y1="50" x2="74" y2="50" /><line x1="33" y1="33" x2="67" y2="67" /><line x1="67" y1="33" x2="33" y2="67" /></>,
+    "A Justiça": <><line x1="50" y1="18" x2="50" y2="56" /><line x1="28" y1="30" x2="72" y2="30" /><line x1="28" y1="30" x2="28" y2="50" /><line x1="72" y1="30" x2="72" y2="50" /><line x1="18" y1="50" x2="38" y2="50" /><line x1="62" y1="50" x2="82" y2="50" /><line x1="36" y1="80" x2="64" y2="80" /><line x1="50" y1="56" x2="50" y2="80" /></>,
+    "O Pendurado": <><line x1="28" y1="24" x2="72" y2="24" /><line x1="50" y1="24" x2="50" y2="52" /><circle cx="50" cy="64" r="11" /><line x1="50" y1="52" x2="38" y2="40" /><line x1="50" y1="52" x2="62" y2="40" /></>,
+    "A Morte": <><circle cx="50" cy="42" r="19" /><line x1="37" y1="70" x2="63" y2="70" /><line x1="50" y1="61" x2="50" y2="80" /></>,
+    "A Temperança": <><polygon points="32,22 50,50 18,50" /><polygon points="68,22 86,50 54,50" /><line x1="50" y1="50" x2="50" y2="82" /></>,
+    "O Diabo": <><polygon points="50,80 63,44 27,63 73,63 37,44" /></>,
+    "A Torre": <><rect x="33" y="42" width="34" height="42" /><polyline points="52,10 42,32 57,32 45,54" /></>,
+    "A Estrela": <><circle cx="50" cy="50" r="6" /><line x1="50" y1="40" x2="50" y2="18" /><line x1="50" y1="60" x2="50" y2="82" /><line x1="40" y1="50" x2="18" y2="50" /><line x1="60" y1="50" x2="82" y2="50" /><line x1="43" y1="43" x2="27" y2="27" /><line x1="57" y1="43" x2="73" y2="27" /><line x1="43" y1="57" x2="27" y2="73" /><line x1="57" y1="57" x2="73" y2="73" /></>,
+    "A Lua": <><circle cx="47" cy="50" r="17" /><circle cx="56" cy="50" r="17" fill="var(--ink2)" /><circle cx="24" cy="28" r="1.6" /><circle cx="78" cy="34" r="1.6" /><circle cx="72" cy="74" r="1.6" /></>,
+    "O Sol": <><circle cx="50" cy="50" r="15" /><line x1="50" y1="24" x2="50" y2="12" /><line x1="50" y1="76" x2="50" y2="88" /><line x1="24" y1="50" x2="12" y2="50" /><line x1="76" y1="50" x2="88" y2="50" /><line x1="32" y1="32" x2="22" y2="22" /><line x1="68" y1="32" x2="78" y2="22" /><line x1="32" y1="68" x2="22" y2="78" /><line x1="68" y1="68" x2="78" y2="78" /></>,
+    "O Julgamento": <><polygon points="28,58 28,48 60,38 60,68" /><line x1="60" y1="53" x2="80" y2="53" /><line x1="44" y1="28" x2="44" y2="14" /><line x1="56" y1="28" x2="56" y2="16" /><line x1="32" y1="32" x2="24" y2="22" /></>,
+    "O Mundo": <><ellipse cx="50" cy="50" rx="27" ry="19" /><ellipse cx="50" cy="50" rx="19" ry="12" fill="var(--ink2)" /></>,
+  };
+  return <svg className="icon" viewBox="0 0 100 100">{shapes[title] || <circle cx="50" cy="50" r="20" />}</svg>;
+}
+
+function SuitIcon({ suitKey }) {
+  const shapes = {
+    copas: <><path d="M32 22 Q32 46 50 46 Q68 46 68 22" /><line x1="50" y1="46" x2="50" y2="68" /><line x1="34" y1="80" x2="66" y2="80" /><line x1="50" y1="68" x2="50" y2="80" /></>,
+    espadas: <><line x1="50" y1="14" x2="50" y2="68" /><polygon points="50,14 43,30 57,30" /><line x1="34" y1="42" x2="66" y2="42" /><circle cx="50" cy="76" r="7" /></>,
+    ouros: <><circle cx="50" cy="50" r="24" /><line x1="50" y1="32" x2="50" y2="68" /><line x1="32" y1="50" x2="68" y2="50" /></>,
+    bastoes: <><line x1="30" y1="78" x2="70" y2="22" /><line x1="40" y1="65" x2="48" y2="70" /><line x1="50" y1="52" x2="58" y2="57" /><line x1="60" y1="39" x2="68" y2="44" /></>,
+  };
+  return <svg className="icon" viewBox="0 0 100 100">{shapes[suitKey]}</svg>;
+}
+
+function CardArt({ card }) {
+  if (card.arcana === "maior") return <MajorIcon title={card.title} />;
+  return (
+    <div className="minor-art">
+      <SuitIcon suitKey={card.suitKey} />
+      <div className="minor-rank">{card.rankLabel}</div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   INTERPRETAÇÃO COMPLETA — combina pergunta + todas as cartas
+--------------------------------------------------------- */
+const CATEGORY_MAP = [
+  { cat: "amor", words: ["amor", "relacionamento", "namorad", "paix", "casamento", "crush", "paquera", "casal", "affair", "ex "] },
+  { cat: "trabalho", words: ["trabalho", "emprego", "carreira", "chefe", "projeto", "freela", "cliente", "negóc", "negoc", "empresa", "entrevista"] },
+  { cat: "dinheiro", words: ["dinheiro", "financ", "grana", "investi", "dívida", "divida", "salário", "salario", "renda"] },
+  { cat: "saude", words: ["saúde", "saude", "corpo", "doença", "doenca", "dor ", "ansiedade", "depress"] },
+  { cat: "decisao", words: ["decisão", "decisao", "decidir", "escolha", "caminho", "dúvida", "duvida"] },
+];
+const CATEGORY_FRAME = {
+  amor: { label: "no campo amoroso", closing: "No amor, essas energias pedem honestidade acima de tudo — com o outro e com você mesma(o)." },
+  trabalho: { label: "na sua vida profissional", closing: "No trabalho, essas cartas pedem clareza nos próximos passos práticos, não só boas intenções." },
+  dinheiro: { label: "nas suas finanças", closing: "No campo financeiro, essas cartas pedem atenção aos detalhes concretos, não só à intuição." },
+  saude: { label: "sobre sua saúde e bem-estar", closing: "Sobre saúde e bem-estar, ouça o que o corpo está pedindo e busque apoio profissional quando for o caso." },
+  decisao: { label: "sobre essa decisão", closing: "Para essa decisão, as cartas mostram tendências — a escolha final é sempre sua." },
+  geral: { label: "sobre esse momento", closing: "O tarô aponta tendências e possibilidades — a decisão final é sempre sua." },
+};
+
+function detectCategory(question) {
+  const q = (question || "").toLowerCase();
+  for (const { cat, words } of CATEGORY_MAP) if (words.some((w) => q.includes(w))) return cat;
+  return "geral";
+}
+
+// Tenta capturar o que está por trás da pergunta, não só a categoria — pra leitura não parecer genérica.
+const SITUATION_HINTS = [
+  { words: ["voltar", "retomar", "reconcilia", "reconquistar"], ack: "entender se existe espaço real para reconstruir isso" },
+  { words: ["sumiu", "não responde", "nao responde", "silêncio", "silencio", "gelou", "distante", "se afastou"], ack: "entender esse silêncio ou distanciamento que está te incomodando" },
+  { words: ["traiu", "traição", "traicao", "mentiu", "mentira"], ack: "lidar com essa quebra de confiança" },
+  { words: ["terminou", "separou", "acabou", "término", "termino"], ack: "entender esse fim que ainda pesa" },
+  { words: ["gosta de mim", "sente por mim", " me ama", "me ama"], ack: "confirmar o que essa pessoa realmente sente" },
+  { words: ["deveria", "devo ", "vale a pena", "continuar"], ack: "decidir se vale a pena continuar investindo nisso" },
+  { words: ["ciúme", "ciume", "desconfia", "desconfio"], ack: "entender essa desconfiança que está te consumindo" },
+  { words: ["intenção", "intencao", "pretende", "quer de mim"], ack: "entender de verdade a intenção por trás do que está acontecendo" },
+];
+function detectHint(question) {
+  const q = (question || "").toLowerCase();
+  for (const { words, ack } of SITUATION_HINTS) if (words.some((w) => q.includes(w))) return ack;
+  return null;
+}
+
+const SUIT_NAME = { copas: "Copas", espadas: "Espadas", ouros: "Ouros", bastoes: "Bastões" };
+const SUIT_DOMAIN = { copas: "as emoções e relações", espadas: "os pensamentos e conflitos", ouros: "trabalho e recursos materiais", bastoes: "a ação e a paixão" };
+
+const ADVICE_PRIORITY = ["Conselho", "Resultado final", "Resultado", "Objetivo", "Futuro próximo", "Futuro", "Caminho sugerido", "Mensagem do dia"];
+const WARNING_PRIORITY = ["Desafio", "Esperança/Medo"];
+
+function pickByPriority(positions, cards, priorityList) {
+  for (const p of priorityList) {
+    const idx = positions.indexOf(p);
+    if (idx !== -1) return { idx, card: cards[idx], pos: positions[idx] };
+  }
+  return null;
+}
+
+const lowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const dropPeriod = (s) => s.replace(/\.\s*$/, "");
+
+const POSITION_OPENERS = {
+  "passado": "Vamos começar pelo que já ficou atrás.",
+  "presente": "E chegando no momento em que você está agora,",
+  "futuro": "Olhando pro que vem a seguir,",
+  "situação": "Sobre a situação em si,",
+  "desafio": "E aqui está o desafio real que aparece:",
+  "conselho": "A carta que traz o conselho de tudo isso",
+  "causa oculta": "Tem algo por trás disso que talvez você não tenha percebido ainda:",
+  "resultado": "E pro que essa energia tende a resultar,",
+  "resultado final": "Chegando no resultado final dessa tiragem,",
+  "você mesmo": "Sobre onde você está, de verdade, nessa história,",
+  "base": "Na raiz de tudo isso,",
+  "passado recente": "No que aconteceu mais recentemente,",
+  "objetivo": "Sobre o que você realmente busca aqui,",
+  "futuro próximo": "Pro que deve vir logo,",
+  "influências": "E há forças ao redor influenciando tudo isso:",
+  "esperança/medo": "Bem no fundo, entre esperança e medo,",
+  "mensagem do dia": "A mensagem que vem pra hoje",
+};
+const UP_VALIDATIONS = [
+  "e isso costuma vir acompanhado de um certo alívio, mesmo que pequeno.",
+  "e vale prestar atenção em como isso já está se mostrando na prática, no dia a dia.",
+  "é uma energia que tende a jogar a favor, se você deixar.",
+];
+const REV_VALIDATIONS = [
+  "e não é raro que isso venha com um certo peso, ou cansaço, que você já vem sentindo.",
+  "o que pode explicar aquele desconforto que você já carregava antes mesmo de perguntar.",
+  "vale reconhecer esse ponto com honestidade antes de seguir adiante.",
+];
+
+function opener(pos) {
+  const key = pos.toLowerCase();
+  return POSITION_OPENERS[key] || `E sobre "${pos}",`;
+}
+
+// Parágrafo longo e humano por carta: significado + sentimento + validação emocional.
+function humanizeCard(pos, card, subject) {
+  const meaning = card.reversed ? card.meaningRev : card.meaningUp;
+  const feel = card.reversed ? card.kwRev : card.kwUp;
+  const simple = card.reversed ? card.simpleRev : card.simpleUp;
+  const validations = card.reversed ? REV_VALIDATIONS : UP_VALIDATIONS;
+  const validation = validations[card.id % validations.length];
+  const who = subject === "você" ? "você" : subject;
+  return `${opener(pos)} a carta que aparece é ${card.title}${card.reversed ? ", invertida" : ""}. Ela significa ${lowerFirst(dropPeriod(meaning))} — e, na prática, ${lowerFirst(dropPeriod(simple))} Isso me diz que ${who} pode estar vivendo algo bem ligado a ${feel} nesse momento, ${validation}`;
+}
+
+function adviceSentence(card, subject) {
+  const act = card.reversed ? card.actionRev : card.actionUp;
+  if (subject === "você") return `o que eu sinceramente sugiro é que você ${lowerFirst(act)}`;
+  return `o caminho que faz sentido é: ${lowerFirst(act)}`;
+}
+
+/* --- Leitura padrão (uma pessoa) --- */
+function buildFullReading(question, positions, cards, otherName) {
+  const cat = detectCategory(question);
+  const frame = CATEGORY_FRAME[cat];
+  const hasQuestion = question && question.trim().length > 0;
+  const hint = detectHint(question);
+
+  let intro;
+  if (hasQuestion && hint) {
+    intro = `Você me contou: "${question.trim()}". Sinto que, no fundo, o que você quer é ${hint} — vou olhar isso com calma, carta por carta, ${frame.label}.`;
+  } else if (hasQuestion) {
+    intro = `Você me perguntou: "${question.trim()}". Vou responder olhando direto pra isso, ${frame.label}, sem enrolação.`;
+  } else {
+    intro = `Vamos ver o que as cartas têm a dizer ${frame.label}.`;
+  }
+
+  const bodyParagraphs = cards.map((c, i) => humanizeCard(positions[i], c, "você"));
+
+  const nMajor = cards.filter((c) => c.arcana === "maior").length;
+  const nRev = cards.filter((c) => c.reversed).length;
+  const reflexBits = [];
+  if (cards.length > 1) {
+    if (nMajor >= Math.ceil(cards.length / 2)) reflexBits.push("a maioria das cartas que saíram são Arcanos Maiores, o que pra mim é um sinal de que isso não é um detalhe qualquer — é algo que pesa mesmo na sua vida");
+    else if (nMajor === 0) reflexBits.push("todas as cartas foram Arcanos Menores, o que me mostra que isso está mais no campo do dia a dia prático do que de uma virada existencial");
+    if (nRev >= Math.ceil(cards.length * 0.6)) reflexBits.push("apareceram muitas cartas invertidas, e isso, sinceramente, pede uma pausa — parte dessa energia está represada, pedindo um trabalho interno antes de virar ação");
+    else if (nRev === 0) reflexBits.push("nenhuma carta saiu invertida, o que eu leio como um bom sinal — a energia está fluindo sem grandes bloqueios no caminho");
+    const suitCounts = {};
+    cards.filter((c) => c.arcana === "menor").forEach((c) => { suitCounts[c.suitKey] = (suitCounts[c.suitKey] || 0) + 1; });
+    const topSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topSuit && topSuit[1] >= 2) reflexBits.push(`${topSuit[1]} das cartas são de ${SUIT_NAME[topSuit[0]]}, o que reforça que ${SUIT_DOMAIN[topSuit[0]]} é realmente o centro de tudo isso`);
+  }
+  const nameBit = otherName && otherName.trim()
+    ? `e como você trouxe ${otherName.trim()} pra essa pergunta, vale lembrar que essas energias também falam da dinâmica entre vocês dois, não só do que se passa sozinha(o) com você`
+    : null;
+  const allReflex = [...reflexBits, nameBit].filter(Boolean);
+  const reflection = allReflex.length
+    ? `Uma coisa que eu preciso te dizer, olhando o conjunto: ${allReflex.join("; ")}.`
+    : "";
+
+  const advice = pickByPriority(positions, cards, ADVICE_PRIORITY);
+  const warning = pickByPriority(positions, cards, WARNING_PRIORITY);
+  const direcao = [];
+  const adviceCard = advice ? advice.card : cards[cards.length - 1];
+  direcao.push(`Sabendo de tudo isso, ${adviceSentence(adviceCard, "você")} — porque foi isso que as cartas mostraram do começo ao fim dessa leitura.`);
+  if (warning && (!advice || warning.idx !== advice.idx)) {
+    direcao.push(`E outra coisa: fique de olho especialmente no que veio em "${warning.pos}" — ${lowerFirst(warning.card.reversed ? warning.card.actionRev : warning.card.actionUp)}`);
+  }
+
+  return { intro, bodyParagraphs, reflection, closing: frame.closing, direcao };
+}
+
+/* --- Leitura de duas pessoas (Você & a Outra Pessoa) --- */
+function buildDuoReading(question, positions, cards, otherName) {
+  const cat = detectCategory(question);
+  const frame = CATEGORY_FRAME[cat];
+  const name = (otherName || "").trim() || "a outra pessoa";
+  const hasQuestion = question && question.trim().length > 0;
+  const hint = detectHint(question);
+
+  let intro;
+  if (hasQuestion && hint) {
+    intro = `Você me contou: "${question.trim()}". Sinto que, no fundo, você quer ${hint} — e pra isso, precisamos olhar tanto pro seu lado quanto pro lado de ${name}.`;
+  } else if (hasQuestion) {
+    intro = `Você me perguntou: "${question.trim()}". Vamos olhar os dois lados dessa história — o seu e o de ${name}.`;
+  } else {
+    intro = `Vamos ver o que se passa entre você e ${name}, ${frame.label}.`;
+  }
+
+  const [meCard, otherCard, pathCard] = cards;
+  const meParagraph = humanizeCard("Você", meCard, "você");
+  const otherParagraph = humanizeCard(name, otherCard, name);
+  const bodyParagraphs = [meParagraph, otherParagraph];
+
+  const meFeel = meCard.reversed ? meCard.kwRev : meCard.kwUp;
+  const otherFeel = otherCard.reversed ? otherCard.kwRev : otherCard.kwUp;
+  const reflection = `Juntando as duas cartas: você está mais do lado de ${meFeel}, enquanto ${name} parece estar vivendo ${otherFeel} — e, sinceramente, é esse encontro (ou desencontro) de energias que está moldando tudo o que está acontecendo entre vocês agora.`;
+
+  const pathMeaning = pathCard.reversed ? pathCard.meaningRev : pathCard.meaningUp;
+  const pathAction = pathCard.reversed ? pathCard.actionRev : pathCard.actionUp;
+  const direcao = [`O caminho sugerido — ${pathCard.title}${pathCard.reversed ? ", invertida" : ""} — significa ${lowerFirst(dropPeriod(pathMeaning))}. Por isso, o que eu sugiro de coração é que você ${lowerFirst(pathAction)}, porque, juntando as duas cartas de vocês com essa terceira, é esse o caminho que faz sentido pros dois lados agora.`];
+
+  return { intro, bodyParagraphs, reflection, closing: frame.closing, direcao };
+}
+
+function fullReadingToText(reading) {
+  return [reading.intro, reading.bodyParagraphs.join(" "), reading.reflection, "O que fazer agora:", reading.direcao.join(" "), reading.closing].filter(Boolean).join(" ");
+}
+
+
+/* ---------------------------------------------------------
+   ÁUDIO — sino sintetizado + ambiente contínuo (Tone.js) + voz (Web Speech API)
+--------------------------------------------------------- */
+async function playChime() {
+  try {
+    await Tone.start();
+    const synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.02, decay: 0.5, sustain: 0, release: 1 } }).toDestination();
+    synth.volume.value = -10;
+    synth.triggerAttackRelease("A5", "8n");
+  } catch (e) { /* áudio indisponível */ }
+}
+
+async function startAmbient(ref) {
+  if (ref.current) return;
+  try {
+    await Tone.start();
+    const reverb = new Tone.Reverb({ decay: 9, wet: 0.65 }).toDestination();
+    const filter = new Tone.Filter(500, "lowpass").connect(reverb);
+    const noise = new Tone.Noise("pink");
+    noise.volume.value = -34;
+    noise.connect(filter);
+    noise.start();
+    const pad = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 3, decay: 2, sustain: 1, release: 5 } }).connect(reverb);
+    pad.volume.value = -20;
+    const notes = [["C3", "E3", "G3"], ["A2", "C3", "E3"], ["D3", "F3", "A3"], ["C3", "E3", "G3"]];
+    let i = 0;
+    const loop = new Tone.Loop((time) => { pad.triggerAttackRelease(notes[i % notes.length], "3n", time); i++; }, "6s");
+    loop.start(0);
+    Tone.Transport.start();
+    ref.current = { reverb, filter, noise, pad, loop };
+  } catch (e) { /* áudio indisponível */ }
+}
+
+function stopAmbient(ref) {
+  if (!ref.current) return;
+  const { reverb, filter, noise, pad, loop } = ref.current;
+  try {
+    loop.stop(); loop.dispose();
+    noise.stop(); noise.dispose();
+    filter.dispose(); pad.dispose(); reverb.dispose();
+  } catch (e) {}
+  ref.current = null;
+}
+
+function speak(text, onEnd) {
+  if (!("speechSynthesis" in window)) { alert("Seu navegador não suporta leitura em voz alta."); return; }
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "pt-BR";
+  utter.rate = 0.93;
+  utter.pitch = 0.9;
+  const voices = window.speechSynthesis.getVoices();
+  const ptVoice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("pt"));
+  if (ptVoice) utter.voice = ptVoice;
+  utter.onend = () => onEnd && onEnd();
+  window.speechSynthesis.speak(utter);
+}
+function stopSpeak() { try { window.speechSynthesis.cancel(); } catch (e) {} }
+
+/* ---------------------------------------------------------
+   COMPONENTE RAIZ — carteira, streak, som, paywall
+--------------------------------------------------------- */
+function RitualIntro() {
+  return (
+    <div className="ritual panel">
+      <label className="field-label">Antes de começar</label>
+      <ol className="ritual-list">
+        <li>Encontre um lugar tranquilo e respire fundo três vezes, soltando o ar bem devagar.</li>
+        <li>Pense na sua pergunta com clareza — ou apenas abra o coração para o que você precisa ouvir agora.</li>
+        <li>Se você tem uma fé ou espiritualidade própria, use este momento para se conectar com ela: peça orientação e proteção antes de embaralhar.</li>
+        <li>Quando se sentir pronta(o), embaralhe e tire as cartas com atenção plena, sem pressa.</li>
+      </ol>
+    </div>
+  );
+}
+
+function SmokeCurtain({ show }) {
+  if (!show) return null;
+  return (
+    <div className="smoke-curtain">
+      <div className="smoke-panel left" />
+      <div className="smoke-panel right" />
+    </div>
+  );
+}
+
+function StarsField() {
+  const stars = useMemo(
+    () => Array.from({ length: 50 }, () => ({
+      top: Math.random() * 100,
+      left: Math.random() * 100,
+      size: Math.random() * 2 + 1,
+      delay: Math.random() * 3,
+    })),
+    []
+  );
+  return (
+    <div className="stars-bg">
+      {stars.map((s, i) => (
+        <div key={i} className="star" style={{ top: `${s.top}%`, left: `${s.left}%`, width: s.size, height: s.size, animationDelay: `${s.delay}s` }} />
+      ))}
+    </div>
+  );
+}
+
+function Fog() {
+  return (
+    <div className="fog">
+      <span className="f1" />
+      <span className="f2" />
+    </div>
+  );
+}
+
+function SparkleBurst() {
+  const sparks = useMemo(
+    () => Array.from({ length: 8 }, (_, i) => {
+      const angle = (i / 8) * Math.PI * 2;
+      return { tx: Math.cos(angle) * 44, ty: Math.sin(angle) * 44, delay: i * 25 };
+    }),
+    []
+  );
+  return (
+    <div className="sparkle-burst">
+      {sparks.map((s, i) => (
+        <span key={i} className="sparkle" style={{ "--tx": `${s.tx}px`, "--ty": `${s.ty}px`, animationDelay: `${s.delay}ms` }} />
+      ))}
+    </div>
+  );
+}
+
+export default function ArcanaApp() {
+  const [mode, setMode] = useState("leitura");
+  const [conta, setConta] = useState({ credits: 0, streak: 0, lastDate: null, soundOn: true, ambientOn: false });
+  const [loaded, setLoaded] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const ambientRef = useRef(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get("tarot-conta", false);
+        if (res && res.value) setConta({ ambientOn: false, ...JSON.parse(res.value) });
+      } catch (e) { /* conta nova */ }
+      setLoaded(true);
+    })();
+    return () => stopAmbient(ambientRef);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (conta.ambientOn) startAmbient(ambientRef); else stopAmbient(ambientRef);
+  }, [conta.ambientOn, loaded]);
+
+  const saveConta = async (next) => {
+    setConta(next);
+    try { await window.storage.set("tarot-conta", JSON.stringify(next), false); } catch (e) {}
+  };
+
+  const registerDrawForStreak = () => {
+    const today = new Date().toDateString();
+    if (conta.lastDate === today) return;
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    const nextStreak = conta.lastDate === yesterday ? conta.streak + 1 : 1;
+    saveConta({ ...conta, streak: nextStreak, lastDate: today });
+  };
+
+  const spendCredit = () => {
+    if (conta.credits < 1) { setShowPaywall(true); return false; }
+    saveConta({ ...conta, credits: conta.credits - 1 });
+    return true;
+  };
+
+  const buyPackage = (qty, price) => {
+    saveConta({ ...conta, credits: conta.credits + qty });
+    setShowPaywall(false);
+    alert(`Compra simulada: ${qty} crédito(s) por R$${price} — nenhum valor real foi cobrado. Para pagamentos reais, é preciso integrar um gateway (Mercado Pago/Stripe) num backend fora deste protótipo.`);
+  };
+
+  const toggleSound = () => saveConta({ ...conta, soundOn: !conta.soundOn });
+  const toggleAmbient = () => saveConta({ ...conta, ambientOn: !conta.ambientOn });
+
+  if (!loaded) return null;
+
+  return (
+    <div className="root">
+      <GlobalStyle />
+      <StarsField />
+      <Fog />
+
+      <div className="head">
+        <h1>ARCANA</h1>
+        <p>tarô tradicional — leitura & jornada</p>
+      </div>
+      <div className="divider"><span className="line" /><Moon size={14} /><span className="line r" /></div>
+
+      <div className="topbar">
+        <div className="stat-pill"><Flame size={14} /> {conta.streak} dias</div>
+        <div className="stat-pill"><Coins size={14} /> {conta.credits} créditos</div>
+        <button className="icon-btn" onClick={toggleSound} title="Sino ao virar carta">{conta.soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+        <button className={"icon-btn" + (conta.ambientOn ? " on" : "")} onClick={toggleAmbient} title="Música ambiente"><Music size={15} /></button>
+        <button className="stat-pill buy" onClick={() => setShowPaywall(true)}>+ créditos</button>
+      </div>
+
+      <RitualIntro />
+
+      <div className="nav">
+        <button className={mode === "leitura" ? "active" : ""} onClick={() => setMode("leitura")}>Leitura</button>
+        <button className={mode === "jornada" ? "active" : ""} onClick={() => setMode("jornada")}>Jornada</button>
+      </div>
+
+      <div className="mode-explainer">
+        <div className={"mode-card" + (mode === "leitura" ? " active" : "")}>
+          <b>Leitura</b>
+          <span>Você faz uma pergunta e recebe uma resposta agora — pontual, para uma situação específica da sua vida.</span>
+        </div>
+        <div className={"mode-card" + (mode === "jornada" ? " active" : "")}>
+          <b>Jornada</b>
+          <span>Sem pergunta — é uma prática guiada de autoconhecimento, uma estação por vez, no seu ritmo, ao longo dos 22 Arcanos Maiores.</span>
+        </div>
+      </div>
+
+      {mode === "leitura" ? (
+        <Leitura soundOn={conta.soundOn} spendCredit={spendCredit} registerDrawForStreak={registerDrawForStreak} onNeedCredits={() => setShowPaywall(true)} />
+      ) : (
+        <Jornada soundOn={conta.soundOn} spendCredit={spendCredit} registerDrawForStreak={registerDrawForStreak} onNeedCredits={() => setShowPaywall(true)} />
+      )}
+
+      {showPaywall && <Paywall onClose={() => setShowPaywall(false)} onBuy={buyPackage} />}
+    </div>
+  );
+}
+
+function Paywall({ onClose, onBuy }) {
+  return (
+    <div className="overlay">
+      <div className="modal">
+        <button className="close-x" onClick={onClose}><X size={18} /></button>
+        <Lock size={22} style={{ color: "var(--gold)" }} />
+        <h3>Desbloquear leituras completas</h3>
+        <p className="modal-note">A carta do dia é sempre grátis. Tiragens completas e a Jornada usam créditos.</p>
+        <div className="packages">
+          <button className="pkg" onClick={() => onBuy(1, "1,99")}><b>1 crédito</b><span>R$1,99</span></button>
+          <button className="pkg" onClick={() => onBuy(5, "7,99")}><b>5 créditos</b><span>R$7,99</span></button>
+          <button className="pkg" onClick={() => onBuy(12, "14,99")}><b>12 créditos</b><span>R$14,99</span></button>
+        </div>
+        <p className="modal-disclaimer">Simulação de compra — nenhuma cobrança real acontece neste protótipo.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   MODO LEITURA
+--------------------------------------------------------- */
+function Leitura({ soundOn, spendCredit, registerDrawForStreak, onNeedCredits }) {
+  const [question, setQuestion] = useState("");
+  const [otherName, setOtherName] = useState("");
+  const [spreadId, setSpreadId] = useState("dia");
+  const [cards, setCards] = useState(null);
+  const [revealed, setRevealed] = useState({});
+  const [history, setHistory] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [showSmoke, setShowSmoke] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get("tarot-readings", false);
+        if (res && res.value) setHistory(JSON.parse(res.value));
+      } catch (e) {}
+      setLoaded(true);
+    })();
+  }, []);
+
+  const saveHistory = async (entry) => {
+    const next = [entry, ...history].slice(0, 20);
+    setHistory(next);
+    try { await window.storage.set("tarot-readings", JSON.stringify(next), false); } catch (e) {}
+  };
+
+  const handleDraw = () => {
+    const spread = SPREADS[spreadId];
+    if (!spread.free && !spendCredit()) return;
+    stopSpeak();
+    setShowSmoke(true);
+    setTimeout(() => setShowSmoke(false), 1600);
+    const drawn = drawCards(spread.count);
+    setCards(drawn);
+    setRevealed({});
+    registerDrawForStreak();
+    saveHistory({
+      date: new Date().toLocaleString("pt-BR"),
+      spread: spread.label,
+      question: question || "(sem pergunta registrada)",
+      cards: drawn.map((c) => `${c.title}${c.reversed ? " (invertida)" : ""}`),
+    });
+  };
+
+  const reveal = (i) => {
+    setRevealed((r) => ({ ...r, [i]: true }));
+    if (soundOn) playChime();
+  };
+
+  const allRevealed = cards && cards.every((_, i) => revealed[i]);
+  const spread = SPREADS[spreadId];
+  const positions = resolvePositions(spread, otherName);
+
+  const reading = useMemo(() => {
+    if (!cards || !allRevealed) return null;
+    return spreadId === "duo"
+      ? buildDuoReading(question, positions, cards, otherName)
+      : buildFullReading(question, positions, cards, otherName);
+  }, [cards, allRevealed, spreadId, positions, question, otherName]);
+
+  const listenToReading = () => {
+    if (!reading) return;
+    setSpeaking(true);
+    speak(fullReadingToText(reading), () => setSpeaking(false));
+  };
+  const stopListening = () => { stopSpeak(); setSpeaking(false); };
+
+  const share = async () => {
+    const text = cards
+      ? `Minha leitura de tarô (${spread.label}):\n${cards.map((c, i) => `${positions[i]}: ${c.title}${c.reversed ? " (invertida)" : ""}`).join("\n")}\n— feita no ARCANA`
+      : "ARCANA — tarô tradicional";
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; } catch (e) {}
+    }
+    try { await navigator.clipboard.writeText(text); alert("Leitura copiada — cole onde quiser compartilhar."); } catch (e) {}
+  };
+
+  return (
+    <>
+      <SmokeCurtain show={showSmoke} />
+      <div className="panel">
+        <label className="field-label">Sua pergunta (opcional)</label>
+        <input className="question" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="O que você quer perguntar às cartas?" />
+
+        <label className="field-label" style={{ marginTop: 16 }}>Nome da outra pessoa (opcional)</label>
+        <input className="question" value={otherName} onChange={(e) => setOtherName(e.target.value)} placeholder="Ex: nome da pessoa envolvida — só se sua pergunta for sobre alguém específico" />
+
+        <label className="field-label" style={{ marginTop: 16 }}>Tiragem</label>
+        <div className="chips">
+          {Object.entries(SPREADS).map(([id, s]) => (
+            <button key={id} className={"chip" + (spreadId === id ? " active" : "")} onClick={() => setSpreadId(id)}>
+              {s.label}{!s.free && <Lock size={10} style={{ marginLeft: 5, verticalAlign: "-1px" }} />}
+            </button>
+          ))}
+        </div>
+        <p className="spread-hint"><b>{spread.forWho}</b> {spread.when}</p>
+
+        <div className="actions">
+          <button className="btn btn-primary" onClick={handleDraw}><Shuffle size={14} /> Embaralhar e tirar</button>
+          {cards && <button className="btn btn-ghost" onClick={share}><Share2 size={14} /> Compartilhar</button>}
+        </div>
+      </div>
+
+      {cards && (
+        <>
+          <div className="spread">
+            {cards.map((c, i) => (
+              <div className="slot" key={c.id}>
+                <div className="pos-label">{positions[i]}</div>
+                <div className="card" onClick={() => reveal(i)}>
+                  <div className={"card-inner" + (revealed[i] ? " flipped" : "")}>
+                    <div className="face back"><Moon className="glyph" /></div>
+                    <div className="face front">
+                      <div className="art"><CardArt card={c} /></div>
+                      <div>
+                        <div className="name">{c.title}</div>
+                        <div className="kw">{c.reversed ? c.kwRev : c.kwUp}</div>
+                      </div>
+                      <div className="orient">{c.reversed ? "INVERTIDA" : "NORMAL"}</div>
+                      {revealed[i] && <SparkleBurst />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {Object.keys(revealed).length > 0 && (
+            <div className="meaning-list">
+              {cards.map((c, i) =>
+                revealed[i] ? (
+                  <div className="meaning-item" key={c.id}>
+                    <b>{positions[i]} — {c.title}{c.reversed ? " (invertida)" : ""}</b>
+                    <div className="meaning-trad">{c.reversed ? c.meaningRev : c.meaningUp}</div>
+                    <div className="meaning-simple"><span className="tag">em palavras simples</span> {c.reversed ? c.simpleRev : c.simpleUp}</div>
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
+
+          {reading && (
+            <div className="synthesis">
+              <p>"{reading.intro}"</p>
+              {reading.bodyParagraphs.map((p, i) => <p key={i}>{p}</p>)}
+              {reading.reflection && <p>{reading.reflection}</p>}
+              <div className="direcao-box">
+                <span className="tag"><Compass size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />o que fazer agora</span>
+                <ul>
+                  {reading.direcao.map((d, i) => <li key={i}>{d}</li>)}
+                </ul>
+              </div>
+              <p>{reading.closing}</p>
+              <div className="actions" style={{ marginTop: 12 }}>
+                {!speaking ? (
+                  <button className="btn btn-ghost" onClick={listenToReading}><Ear size={14} /> Ouvir leitura</button>
+                ) : (
+                  <button className="btn btn-ghost" onClick={stopListening}><EarOff size={14} /> Parar</button>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {loaded && history.length > 0 && (
+        <div className="panel" style={{ marginTop: 30 }}>
+          <label className="field-label"><BookOpen size={12} style={{ verticalAlign: "-2px" }} /> Histórico de leituras</label>
+          {history.map((h, i) => (
+            <div className="history-item" key={i}>
+              <span><span className="d">{h.spread}</span> · {h.question}</span>
+              <span>{h.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ---------------------------------------------------------
+   MODO JORNADA — jogo dos 22 Arcanos Maiores
+--------------------------------------------------------- */
+function Jornada({ soundOn, spendCredit, registerDrawForStreak }) {
+  const [state, setState] = useState({ index: 0, points: 0, shadow: 0, journal: {}, drawnToday: null, revealedToday: false });
+  const [loaded, setLoaded] = useState(false);
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get("tarot-jornada", false);
+        if (res && res.value) setState(JSON.parse(res.value));
+      } catch (e) {}
+      setLoaded(true);
+    })();
+  }, []);
+
+  const persist = async (next) => {
+    setState(next);
+    try { await window.storage.set("tarot-jornada", JSON.stringify(next), false); } catch (e) {}
+  };
+
+  const milestone = MAJOR_CARDS[state.index];
+  const finished = state.index >= MAJOR_CARDS.length;
+
+  const draw = () => {
+    if (state.index > 0 && !spendCredit()) return; // primeira estação é grátis (trial)
+    const [card] = drawCards(1);
+    registerDrawForStreak();
+    persist({ ...state, drawnToday: card, revealedToday: false });
+  };
+
+  const reveal = () => {
+    persist({ ...state, revealedToday: true });
+    if (soundOn) playChime();
+  };
+
+  const complete = () => {
+    const c = state.drawnToday;
+    const pts = c.arcana === "maior" ? 3 : ["Pajem", "Cavaleiro", "Rainha", "Rei"].some((r) => c.title.startsWith(r)) ? 2 : 1;
+    const next = {
+      index: state.index + 1,
+      points: state.points + pts,
+      shadow: state.shadow + (c.reversed ? 1 : 0),
+      journal: { ...state.journal, [state.index]: note },
+      drawnToday: null,
+      revealedToday: false,
+    };
+    setNote("");
+    persist(next);
+  };
+
+  const restart = () => persist({ index: 0, points: 0, shadow: 0, journal: {}, drawnToday: null, revealedToday: false });
+
+  if (!loaded) return null;
+
+  return (
+    <>
+      <div className="progress-wrap">
+        <div className="progress-bar"><div className="progress-fill" style={{ width: `${(state.index / MAJOR_CARDS.length) * 100}%` }} /></div>
+      </div>
+      <div className="stats">
+        <div><b>{state.index}/22</b>estações</div>
+        <div><b>{state.points}</b>pontos de luz</div>
+        <div><b>{state.shadow}</b>sombras</div>
+      </div>
+
+      {finished ? (
+        <div className="badge">
+          ✦ Jornada completa ✦<br />
+          <span style={{ fontFamily: "'EB Garamond', serif", color: "var(--parchment)", fontSize: 14 }}>
+            Você percorreu os 22 Arcanos Maiores com {state.points} pontos de luz e {state.shadow} sombras integradas.
+          </span>
+          <div className="actions" style={{ justifyContent: "center", marginTop: 14 }}>
+            <button className="btn btn-ghost" onClick={restart}><RotateCcw size={14} /> Recomeçar jornada</button>
+          </div>
+        </div>
+      ) : (
+        <div className="panel">
+          <label className="field-label">
+            Estação {state.index} — {milestone.title} {state.index > 0 && <Lock size={10} style={{ marginLeft: 4, verticalAlign: "-1px" }} />}
+          </label>
+          <div className="art" style={{ margin: "6px 0" }}><MajorIcon title={milestone.title} /></div>
+          <div className="meaning-item" style={{ marginBottom: 14 }}>
+            <div className="meaning-trad">{milestone.meaningUp}</div>
+            <div className="meaning-simple"><span className="tag">em palavras simples</span> {milestone.simpleUp}</div>
+          </div>
+
+          {!state.drawnToday && (
+            <button className="btn btn-primary" onClick={draw}><Sparkles size={14} /> Tirar carta desta estação</button>
+          )}
+
+          {state.drawnToday && !state.revealedToday && (
+            <div className="card" style={{ marginTop: 6 }} onClick={reveal}>
+              <div className="card-inner">
+                <div className="face back"><Moon className="glyph" /></div>
+              </div>
+            </div>
+          )}
+
+          {state.drawnToday && state.revealedToday && (
+            <>
+              <div className="meaning-item">
+                <div className="art small"><CardArt card={state.drawnToday} /></div>
+                <b>{state.drawnToday.title}{state.drawnToday.reversed ? " (invertida)" : ""}</b>
+                <div className="meaning-trad">{state.drawnToday.reversed ? state.drawnToday.meaningRev : state.drawnToday.meaningUp}</div>
+                <div className="meaning-simple"><span className="tag">em palavras simples</span> {state.drawnToday.reversed ? state.drawnToday.simpleRev : state.drawnToday.simpleUp}</div>
+              </div>
+
+              <label className="field-label" style={{ marginTop: 14 }}>Seu registro para esta estação</label>
+              <textarea className="journal" value={note} onChange={(e) => setNote(e.target.value)} placeholder="O que essa carta revela sobre este momento da sua jornada?" />
+
+              <div className="actions">
+                <button className="btn btn-primary" onClick={complete} disabled={!note.trim()}>
+                  Concluir estação <ChevronRight size={14} />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ---------------------------------------------------------
+   ESTILO GLOBAL
+--------------------------------------------------------- */
+function GlobalStyle() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+      :root {
+        --void: #0b0b12; --ink: #15121e; --ink2: #1c1828;
+        --gold: #c9a24b; --gold-dim: #8a742f; --parchment: #ecdfc0; --mist: #8b87a0; --wine: #7a2836;
+      }
+      * { box-sizing: border-box; }
+      .root { min-height:100vh; background: radial-gradient(ellipse at 50% -10%, #201a30 0%, var(--void) 55%); color:var(--parchment); font-family:'EB Garamond', serif; padding:24px 16px 60px; }
+      .head { text-align:center; margin-bottom:14px; }
+      .head h1 { font-family:'Cinzel',serif; font-weight:700; letter-spacing:.12em; font-size:28px; color:var(--gold); margin:0 0 6px; }
+      .head p { color:var(--mist); font-style:italic; margin:0; font-size:14px; }
+      .divider { display:flex; align-items:center; justify-content:center; gap:10px; margin:14px 0 18px; color:var(--gold-dim); }
+      .divider .line { height:1px; width:60px; background:linear-gradient(90deg, transparent, var(--gold-dim)); }
+      .divider .line.r { background:linear-gradient(90deg, var(--gold-dim), transparent); }
+
+      .topbar { display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+      .stat-pill { font-family:'Cinzel',serif; font-size:11px; letter-spacing:.05em; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--gold-dim); color:var(--mist); padding:6px 12px; border-radius:20px; background:transparent; cursor:default; }
+      .stat-pill.buy { cursor:pointer; color:var(--gold); border-color:var(--gold); }
+      .icon-btn { border:1px solid var(--gold-dim); background:transparent; color:var(--mist); border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
+      .nav { display:flex; justify-content:center; gap:10px; margin-bottom:26px; }
+      .nav button { font-family:'Cinzel',serif; font-size:12px; letter-spacing:.08em; background:transparent; border:1px solid var(--gold-dim); color:var(--mist); padding:9px 18px; border-radius:2px; cursor:pointer; }
+      .nav button.active { color:var(--void); background:var(--gold); border-color:var(--gold); }
+
+      .panel { max-width:720px; margin:0 auto 22px; background:var(--ink); border:1px solid var(--gold-dim); border-radius:3px; padding:22px; }
+      label.field-label { font-family:'Cinzel',serif; font-size:11px; letter-spacing:.08em; color:var(--mist); display:block; margin-bottom:6px; }
+      input.question, textarea.journal { width:100%; background:var(--ink2); border:1px solid var(--gold-dim); color:var(--parchment); font-family:'EB Garamond', serif; font-size:15px; padding:10px 12px; border-radius:2px; }
+      textarea.journal { min-height:80px; resize:vertical; }
+
+      .chips { display:flex; gap:10px; margin:14px 0 4px; flex-wrap:wrap; }
+      .chip { font-family:'Cinzel',serif; font-size:11.5px; letter-spacing:.05em; padding:8px 14px; border:1px solid var(--gold-dim); border-radius:2px; cursor:pointer; color:var(--mist); background:transparent; }
+      .chip.active { background:var(--gold); color:var(--void); border-color:var(--gold); }
+
+      .btn { font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; padding:11px 20px; border-radius:2px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:1px solid var(--gold); }
+      .btn-primary { background:var(--gold); color:var(--void); }
+      .btn-ghost { background:transparent; color:var(--gold); }
+      .btn:disabled { opacity:.4; cursor:not-allowed; }
+      .actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+
+      .spread { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin:22px auto; max-width:720px; }
+      .slot { width:118px; text-align:center; }
+      .pos-label { font-family:'Cinzel',serif; font-size:10.5px; letter-spacing:.06em; color:var(--mist); margin-bottom:8px; text-transform:uppercase; }
+      .card { width:118px; height:190px; perspective:1000px; margin:0 auto; cursor:pointer; }
+      .card-inner { position:relative; width:100%; height:100%; transition:transform .6s; transform-style:preserve-3d; }
+      .card-inner.flipped { transform:rotateY(180deg); }
+      .face { position:absolute; inset:0; border-radius:4px; border:1px solid var(--gold-dim); backface-visibility:hidden; display:flex; flex-direction:column; }
+      .back { background: radial-gradient(circle at 50% 42%, rgba(201,162,75,.16) 0%, transparent 60%), repeating-linear-gradient(45deg, #171220 0 6px, #1c1728 6px 12px); align-items:center; justify-content:center; }
+      .back .glyph { color:var(--gold-dim); font-size:30px; }
+
+      .card-inner.flipped .front { animation: glowpulse 2.6s ease-in-out infinite; }
+      @keyframes glowpulse { 0%,100%{ box-shadow:0 0 8px rgba(201,162,75,.25); } 50%{ box-shadow:0 0 20px rgba(201,162,75,.6); } }
+      .back { position:relative; }
+      .back .glyph { animation: flicker 2.4s ease-in-out infinite; }
+      @keyframes flicker { 0%,100%{ opacity:.55; filter:drop-shadow(0 0 2px rgba(201,162,75,.3)); } 50%{ opacity:1; filter:drop-shadow(0 0 8px rgba(201,162,75,.7)); } }
+
+      .stars-bg { position:fixed; inset:0; overflow:hidden; z-index:0; pointer-events:none; }
+      .star { position:absolute; background:var(--gold); border-radius:50%; animation: twinkle 3.2s ease-in-out infinite; }
+      @keyframes twinkle { 0%,100%{ opacity:.12; } 50%{ opacity:.9; } }
+
+      .fog { position:fixed; inset:-15%; z-index:0; pointer-events:none; filter:blur(50px); opacity:.4; }
+      .fog span { position:absolute; border-radius:50%; }
+      .fog .f1 { width:55%; height:55%; left:-5%; top:5%; background:radial-gradient(circle, #4a3a6a, transparent 70%); animation: drift1 24s ease-in-out infinite; }
+      .fog .f2 { width:50%; height:50%; right:-5%; bottom:-5%; background:radial-gradient(circle, #6a2f3a, transparent 70%); animation: drift2 30s ease-in-out infinite; }
+      @keyframes drift1 { 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(8%,6%) scale(1.15); } }
+      @keyframes drift2 { 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-8%,-6%) scale(1.1); } }
+
+      .root, .head, .divider, .topbar, .nav, .panel, .spread, .meaning-list, .synthesis, .progress-wrap, .stats, .badge { position:relative; z-index:1; }
+
+      .sparkle-burst { position:absolute; inset:0; pointer-events:none; overflow:visible; }
+      .sparkle { position:absolute; top:50%; left:50%; width:4px; height:4px; margin:-2px; background:var(--gold); border-radius:50%; opacity:0; animation: sparkleout .9s ease-out forwards; }
+      @keyframes sparkleout { 0%{ transform:translate(0,0) scale(0); opacity:1; } 100%{ transform:translate(var(--tx), var(--ty)) scale(1); opacity:0; } }
+      .front { background:var(--ink2); transform:rotateY(180deg); padding:8px; justify-content:space-between; align-items:center; }
+      .front .name { font-family:'Cinzel',serif; font-size:12px; text-align:center; line-height:1.25; color:var(--parchment); }
+      .front .kw { font-size:10.5px; font-style:italic; color:var(--mist); text-align:center; }
+      .front .orient { font-size:9.5px; letter-spacing:.05em; text-align:center; color:var(--wine); font-family:'Cinzel',serif; }
+
+      .icon { width:44px; height:44px; }
+      .icon path, .icon circle, .icon line, .icon polygon, .icon polyline, .icon rect, .icon ellipse { stroke:var(--gold); stroke-width:2.4; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+      .art { display:flex; align-items:center; justify-content:center; }
+      .art.small { margin-bottom:8px; }
+      .minor-art { display:flex; flex-direction:column; align-items:center; gap:2px; }
+      .minor-rank { font-family:'Cinzel',serif; font-size:10px; color:var(--gold); letter-spacing:.05em; }
+
+      .meaning-list { max-width:720px; margin:6px auto 0; display:flex; flex-direction:column; gap:10px; }
+      .meaning-item { border-left:2px solid var(--gold-dim); padding-left:12px; font-size:14.5px; }
+      .meaning-item b { color:var(--gold); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.03em; }
+      .meaning-trad { margin-top:4px; }
+      .meaning-simple { margin-top:8px; font-size:14px; color:var(--parchment); background:rgba(201,162,75,.08); border-radius:2px; padding:8px 10px; }
+      .meaning-simple .tag { display:block; font-family:'Cinzel',serif; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); margin-bottom:3px; }
+
+      .synthesis { max-width:720px; margin:20px auto 0; font-style:italic; color:var(--parchment); border-top:1px solid var(--gold-dim); padding-top:14px; font-size:15px; line-height:1.6; }
+      .synthesis p { margin:0 0 10px; }
+      .synthesis p:last-child { margin-bottom:0; }
+      .direcao-box { background:rgba(201,162,75,.1); border:1px solid var(--gold-dim); border-radius:3px; padding:12px 14px; margin:14px 0; font-style:normal; }
+      .direcao-box .tag { display:block; font-family:'Cinzel',serif; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
+      .direcao-box ul { margin:0; padding-left:18px; }
+      .direcao-box li { margin-bottom:6px; font-size:14.5px; color:var(--parchment); }
+      .direcao-box li:last-child { margin-bottom:0; }
+
+      .mode-explainer { max-width:720px; margin:0 auto 22px; display:flex; gap:12px; flex-wrap:wrap; }
+      .mode-card { flex:1; min-width:200px; border:1px solid var(--gold-dim); border-radius:3px; padding:12px 14px; opacity:.55; transition:.25s; }
+      .mode-card.active { opacity:1; border-color:var(--gold); background:rgba(201,162,75,.06); }
+      .mode-card b { display:block; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.05em; color:var(--gold); margin-bottom:4px; }
+      .mode-card span { font-size:13px; color:var(--parchment); line-height:1.5; }
+
+      .spread-hint { max-width:100%; margin:10px 0 0; font-size:13px; color:var(--mist); line-height:1.5; }
+      .spread-hint b { color:var(--gold); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.03em; display:block; margin-bottom:3px; }
+
+      .ritual { max-width:720px; margin:0 auto 22px; }
+
+      .ritual-list { margin:6px 0 0; padding-left:20px; color:var(--parchment); font-size:14px; line-height:1.7; }
+      .ritual-list li { margin-bottom:6px; }
+
+      .icon-btn.on { background:var(--gold); color:var(--void); border-color:var(--gold); }
+
+      .smoke-curtain { position:fixed; inset:0; z-index:45; pointer-events:none; display:flex; }
+      .smoke-panel { flex:1; background: radial-gradient(circle, rgba(40,30,55,.97), rgba(8,6,12,.99)); filter:blur(8px); }
+      .smoke-panel.left { animation: smokeLeft 1.6s ease forwards; }
+      .smoke-panel.right { animation: smokeRight 1.6s ease forwards; }
+      @keyframes smokeLeft { 0%{ transform:translateX(0); opacity:1; } 100%{ transform:translateX(-105%); opacity:0; } }
+      @keyframes smokeRight { 0%{ transform:translateX(0); opacity:1; } 100%{ transform:translateX(105%); opacity:0; } }
+
+      .history-item { display:flex; justify-content:space-between; font-size:13px; color:var(--mist); padding:8px 0; border-bottom:1px solid #2a2438; }
+      .history-item span.d { color:var(--gold); }
+
+      .progress-wrap { max-width:720px; margin:0 auto 18px; }
+      .progress-bar { height:6px; background:#221d30; border-radius:3px; overflow:hidden; border:1px solid var(--gold-dim); }
+      .progress-fill { height:100%; background:var(--gold); transition:width .4s; }
+      .stats { display:flex; gap:22px; justify-content:center; margin:12px 0 20px; font-family:'Cinzel',serif; font-size:12px; color:var(--mist); }
+      .stats b { color:var(--gold); font-size:16px; display:block; }
+
+      .badge { text-align:center; font-family:'Cinzel',serif; color:var(--gold); border:1px solid var(--gold); padding:14px; border-radius:3px; max-width:720px; margin:0 auto; }
+
+      .overlay { position:fixed; inset:0; background:rgba(6,5,10,.75); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+      .modal { background:var(--ink); border:1px solid var(--gold); border-radius:4px; padding:26px 22px; max-width:340px; width:100%; text-align:center; position:relative; }
+      .modal h3 { font-family:'Cinzel',serif; color:var(--gold); font-size:16px; margin:10px 0 6px; }
+      .modal-note { font-size:13px; color:var(--mist); margin:0 0 16px; }
+      .modal-disclaimer { font-size:11px; color:var(--mist); font-style:italic; margin-top:14px; }
+      .close-x { position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--mist); cursor:pointer; }
+      .packages { display:flex; flex-direction:column; gap:8px; }
+      .pkg { display:flex; justify-content:space-between; padding:10px 14px; border:1px solid var(--gold-dim); background:transparent; color:var(--parchment); border-radius:2px; cursor:pointer; font-family:'EB Garamond', serif; font-size:14px; }
+      .pkg b { font-family:'Cinzel',serif; font-size:12px; color:var(--parchment); }
+      .pkg span { color:var(--gold); font-weight:600; }
+    `}</style>
+  );
+}
