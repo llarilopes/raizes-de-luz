@@ -6,98 +6,104 @@
 <title>Raízes de Luz</title>
 <link rel="icon" href="favicon.ico" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?dedupe=react",
-    "react-dom": "https://esm.sh/react-dom@18.3.1?dedupe=react"
-  }
-}
-</script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>html,body,#root{margin:0;min-height:100vh;background:#0b120e;}</style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<style>html,body,#root{margin:0;min-height:100vh;background:#0b120e;}
+#fallback{position:fixed;inset:0;color:#dde5d6;font-family:sans-serif;padding:24px;display:none;}
+</style>
 </head>
 <body>
 <div id="root"></div>
+<div id="fallback">Carregando... se essa mensagem não sair em alguns segundos, veja o console do navegador (F12) para detalhes do erro.</div>
+<script>document.getElementById('fallback').style.display='block';</script>
 <script>
 
     window.storage = {
-      get: (key, shared) => new Promise((resolve, reject) => {
-        try {
-          const pfx = shared ? 'shared:' : 'priv:';
-          const raw = localStorage.getItem(pfx + key);
-          if (raw === null) { reject(new Error('not found')); return; }
-          resolve({ key, value: raw, shared: !!shared });
-        } catch (e) { reject(e); }
-      }),
-      set: (key, value, shared) => new Promise((resolve) => {
-        const pfx = shared ? 'shared:' : 'priv:';
-        localStorage.setItem(pfx + key, value);
-        resolve({ key, value, shared: !!shared });
-      }),
-      delete: (key, shared) => new Promise((resolve) => {
-        const pfx = shared ? 'shared:' : 'priv:';
-        localStorage.removeItem(pfx + key);
-        resolve({ key, deleted: true, shared: !!shared });
-      }),
-      list: (prefix, shared) => new Promise((resolve) => {
-        const pfx = (shared ? 'shared:' : 'priv:') + (prefix || '');
-        const skip = (shared ? 'shared:' : 'priv:').length;
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(pfx)) keys.push(k.slice(skip));
-        }
-        resolve({ keys, prefix, shared: !!shared });
-      }),
+      get: function (key, shared) {
+        return new Promise(function (resolve, reject) {
+          try {
+            var pfx = shared ? 'shared:' : 'priv:';
+            var raw = localStorage.getItem(pfx + key);
+            if (raw === null) { reject(new Error('not found')); return; }
+            resolve({ key: key, value: raw, shared: !!shared });
+          } catch (e) { reject(e); }
+        });
+      },
+      set: function (key, value, shared) {
+        return new Promise(function (resolve) {
+          var pfx = shared ? 'shared:' : 'priv:';
+          localStorage.setItem(pfx + key, value);
+          resolve({ key: key, value: value, shared: !!shared });
+        });
+      },
+      delete: function (key, shared) {
+        return new Promise(function (resolve) {
+          var pfx = shared ? 'shared:' : 'priv:';
+          localStorage.removeItem(pfx + key);
+          resolve({ key: key, deleted: true, shared: !!shared });
+        });
+      },
+      list: function (prefix, shared) {
+        return new Promise(function (resolve) {
+          var pfx = (shared ? 'shared:' : 'priv:') + (prefix || '');
+          var skip = (shared ? 'shared:' : 'priv:').length;
+          var keys = [];
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf(pfx) === 0) keys.push(k.slice(skip));
+          }
+          resolve({ keys: keys, prefix: prefix, shared: !!shared });
+        });
+      }
     };
 
 </script>
-<script type="text/babel" data-type="module" data-presets="react">
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-const __iconsData = {"Flame": [["path", {"d": "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z", "key": "96xj49"}]], "Moon": [["path", {"d": "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", "key": "a7tn18"}]], "Sun": [["circle", {"cx": "12", "cy": "12", "r": "4", "key": "4exip2"}], ["path", {"d": "M12 2v2", "key": "tus03m"}], ["path", {"d": "M12 20v2", "key": "1lh1kg"}], ["path", {"d": "m4.93 4.93 1.41 1.41", "key": "149t6j"}], ["path", {"d": "m17.66 17.66 1.41 1.41", "key": "ptbguv"}], ["path", {"d": "M2 12h2", "key": "1t8f8n"}], ["path", {"d": "M20 12h2", "key": "1q8mjw"}], ["path", {"d": "m6.34 17.66-1.41 1.41", "key": "1m8zz5"}], ["path", {"d": "m19.07 4.93-1.41 1.41", "key": "1shlcs"}]], "Sparkles": [["path", {"d": "M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "key": "4pj2yx"}], ["path", {"d": "M20 3v4", "key": "1olli1"}], ["path", {"d": "M22 5h-4", "key": "1gvqau"}], ["path", {"d": "M4 17v2", "key": "vumght"}], ["path", {"d": "M5 18H3", "key": "zchphs"}]], "BookOpen": [["path", {"d": "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z", "key": "vv98re"}], ["path", {"d": "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z", "key": "1cyq3y"}]], "Feather": [["path", {"d": "M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "key": "18jl4k"}], ["path", {"d": "M16 8 2 22", "key": "vp34q"}], ["path", {"d": "M17.5 15H9", "key": "1oz8nu"}]], "Heart": [["path", {"d": "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z", "key": "c3ymky"}]], "Droplet": [["path", {"d": "M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z", "key": "c7niix"}]], "ScrollText": [["path", {"d": "M15 12h-5", "key": "r7krc0"}], ["path", {"d": "M15 8h-5", "key": "1khuty"}], ["path", {"d": "M19 17V5a2 2 0 0 0-2-2H4", "key": "zz82l3"}], ["path", {"d": "M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3", "key": "1ph1d7"}]], "Star": [["polygon", {"points": "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2", "key": "8f66p6"}]], "Shuffle": [["path", {"d": "M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22", "key": "1wmou1"}], ["path", {"d": "m18 2 4 4-4 4", "key": "pucp1d"}], ["path", {"d": "M2 6h1.9c1.5 0 2.9.9 3.6 2.2", "key": "10bdb2"}], ["path", {"d": "M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8", "key": "vgxac0"}], ["path", {"d": "m18 14 4 4-4 4", "key": "10pe0f"}]], "ChevronRight": [["path", {"d": "m9 18 6-6-6-6", "key": "mthhwq"}]], "Bookmark": [["path", {"d": "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", "key": "1fy3hk"}]], "BookmarkCheck": [["path", {"d": "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z", "key": "169p4p"}], ["path", {"d": "m9 10 2 2 4-4", "key": "1gnqz4"}]], "X": [["path", {"d": "M18 6 6 18", "key": "1bl5f8"}], ["path", {"d": "m6 6 12 12", "key": "d8bk6v"}]], "Info": [["circle", {"cx": "12", "cy": "12", "r": "10", "key": "1mglay"}], ["path", {"d": "M12 16v-4", "key": "1dtifu"}], ["path", {"d": "M12 8h.01", "key": "e9boi3"}]]};
+<script type="text/babel" data-presets="react">
+var __iconsData = {"Flame": [["path", {"d": "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z", "key": "96xj49"}]], "Moon": [["path", {"d": "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", "key": "a7tn18"}]], "Sun": [["circle", {"cx": "12", "cy": "12", "r": "4", "key": "4exip2"}], ["path", {"d": "M12 2v2", "key": "tus03m"}], ["path", {"d": "M12 20v2", "key": "1lh1kg"}], ["path", {"d": "m4.93 4.93 1.41 1.41", "key": "149t6j"}], ["path", {"d": "m17.66 17.66 1.41 1.41", "key": "ptbguv"}], ["path", {"d": "M2 12h2", "key": "1t8f8n"}], ["path", {"d": "M20 12h2", "key": "1q8mjw"}], ["path", {"d": "m6.34 17.66-1.41 1.41", "key": "1m8zz5"}], ["path", {"d": "m19.07 4.93-1.41 1.41", "key": "1shlcs"}]], "Sparkles": [["path", {"d": "M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z", "key": "4pj2yx"}], ["path", {"d": "M20 3v4", "key": "1olli1"}], ["path", {"d": "M22 5h-4", "key": "1gvqau"}], ["path", {"d": "M4 17v2", "key": "vumght"}], ["path", {"d": "M5 18H3", "key": "zchphs"}]], "BookOpen": [["path", {"d": "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z", "key": "vv98re"}], ["path", {"d": "M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z", "key": "1cyq3y"}]], "Feather": [["path", {"d": "M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "key": "18jl4k"}], ["path", {"d": "M16 8 2 22", "key": "vp34q"}], ["path", {"d": "M17.5 15H9", "key": "1oz8nu"}]], "Heart": [["path", {"d": "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z", "key": "c3ymky"}]], "Droplet": [["path", {"d": "M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z", "key": "c7niix"}]], "ScrollText": [["path", {"d": "M15 12h-5", "key": "r7krc0"}], ["path", {"d": "M15 8h-5", "key": "1khuty"}], ["path", {"d": "M19 17V5a2 2 0 0 0-2-2H4", "key": "zz82l3"}], ["path", {"d": "M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3", "key": "1ph1d7"}]], "Star": [["polygon", {"points": "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2", "key": "8f66p6"}]], "Shuffle": [["path", {"d": "M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22", "key": "1wmou1"}], ["path", {"d": "m18 2 4 4-4 4", "key": "pucp1d"}], ["path", {"d": "M2 6h1.9c1.5 0 2.9.9 3.6 2.2", "key": "10bdb2"}], ["path", {"d": "M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8", "key": "vgxac0"}], ["path", {"d": "m18 14 4 4-4 4", "key": "10pe0f"}]], "ChevronRight": [["path", {"d": "m9 18 6-6-6-6", "key": "mthhwq"}]], "Bookmark": [["path", {"d": "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z", "key": "1fy3hk"}]], "BookmarkCheck": [["path", {"d": "m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z", "key": "169p4p"}], ["path", {"d": "m9 10 2 2 4-4", "key": "1gnqz4"}]], "X": [["path", {"d": "M18 6 6 18", "key": "1bl5f8"}], ["path", {"d": "m6 6 12 12", "key": "d8bk6v"}]], "Info": [["circle", {"cx": "12", "cy": "12", "r": "10", "key": "1mglay"}], ["path", {"d": "M12 16v-4", "key": "1dtifu"}], ["path", {"d": "M12 8h.01", "key": "e9boi3"}]]};
 
 function __makeIcon(nodes) {
-  return function Icon({ size = 24, color, className, style, ...rest }) {
+  return function Icon(props) {
+    props = props || {};
+    var size = props.size || 24;
+    var attrs = Object.assign({
+      xmlns: "http://www.w3.org/2000/svg",
+      width: size, height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: props.color || "currentColor",
+      strokeWidth: 2,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+    }, props);
+    delete attrs.size; delete attrs.color;
     return React.createElement(
       "svg",
-      {
-        xmlns: "http://www.w3.org/2000/svg",
-        width: size, height: size,
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: color || "currentColor",
-        strokeWidth: 2,
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
-        className, style, ...rest,
-      },
-      nodes.map((n, i) => React.createElement(n[0], { key: i, ...n[1] }))
+      attrs,
+      nodes.map(function (n, i) { return React.createElement(n[0], Object.assign({ key: i }, n[1])); })
     );
   };
 }
 
-const Flame = __makeIcon(__iconsData.Flame);
-const Moon = __makeIcon(__iconsData.Moon);
-const Sun = __makeIcon(__iconsData.Sun);
-const Sparkles = __makeIcon(__iconsData.Sparkles);
-const BookOpen = __makeIcon(__iconsData.BookOpen);
-const Feather = __makeIcon(__iconsData.Feather);
-const Heart = __makeIcon(__iconsData.Heart);
-const Droplet = __makeIcon(__iconsData.Droplet);
-const ScrollText = __makeIcon(__iconsData.ScrollText);
-const Star = __makeIcon(__iconsData.Star);
-const Shuffle = __makeIcon(__iconsData.Shuffle);
-const ChevronRight = __makeIcon(__iconsData.ChevronRight);
-const Bookmark = __makeIcon(__iconsData.Bookmark);
-const BookmarkCheck = __makeIcon(__iconsData.BookmarkCheck);
-const X = __makeIcon(__iconsData.X);
-const Info = __makeIcon(__iconsData.Info);
+var Flame = __makeIcon(__iconsData.Flame);
+var Moon = __makeIcon(__iconsData.Moon);
+var Sun = __makeIcon(__iconsData.Sun);
+var Sparkles = __makeIcon(__iconsData.Sparkles);
+var BookOpen = __makeIcon(__iconsData.BookOpen);
+var Feather = __makeIcon(__iconsData.Feather);
+var Heart = __makeIcon(__iconsData.Heart);
+var Droplet = __makeIcon(__iconsData.Droplet);
+var ScrollText = __makeIcon(__iconsData.ScrollText);
+var Star = __makeIcon(__iconsData.Star);
+var Shuffle = __makeIcon(__iconsData.Shuffle);
+var ChevronRight = __makeIcon(__iconsData.ChevronRight);
+var Bookmark = __makeIcon(__iconsData.Bookmark);
+var BookmarkCheck = __makeIcon(__iconsData.BookmarkCheck);
+var X = __makeIcon(__iconsData.X);
+var Info = __makeIcon(__iconsData.Info);
 
-const { useState, useEffect, useMemo } = React;
+var { useState, useEffect, useMemo } = React;
 
 /* ---------------------------------------------------------
    AVISO FIXO — usado em todo conteúdo sensível
@@ -446,7 +452,7 @@ function Aviso() {
 /* ---------------------------------------------------------
    COMPONENTE RAIZ
 --------------------------------------------------------- */
-export default function RaizesDeLuz() {
+function RaizesDeLuz() {
   const [aba, setAba] = useState("inicio");
   const [favoritos, setFavoritos] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -1029,7 +1035,14 @@ function GlobalStyle() {
 }
 
 
-createRoot(document.getElementById("root")).render(React.createElement(RaizesDeLuz));
+try {
+  var __root = ReactDOM.createRoot(document.getElementById("root"));
+  __root.render(React.createElement(RaizesDeLuz));
+  document.getElementById('fallback').style.display='none';
+} catch (e) {
+  document.getElementById('fallback').innerText = 'Erro ao carregar: ' + e.message;
+  console.error(e);
+}
 </script>
 </body>
 </html>
